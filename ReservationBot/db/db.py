@@ -16,12 +16,3 @@ async def get_session() -> AsyncSession:
     """Function for getting AsyncSession"""
     async with _async_session() as session:
         return session
-
-
-async def async_main():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    await engine.dispose()
-
-#run(async_main())

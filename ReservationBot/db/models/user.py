@@ -11,7 +11,7 @@ class User(Base):
         primary_key=True
     )
     tg_id = Column(
-        Integer,
+        String,
         nullable=False,
         unique=True,
     )
