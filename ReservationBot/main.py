@@ -2,8 +2,10 @@ import uvicorn
 import asyncio
 from fastapi import FastAPI
 from multiprocessing import Process
+from ReservationBot.db.controller import controller
 from ReservationBot.config import settings
 from ReservationBot.bot import start_bot
+from ReservationBot.generate_token import generate_token
 
 
 app = FastAPI(
@@ -12,21 +14,39 @@ app = FastAPI(
 )
 
 
-@app.post("/delete_user/{user_id}")
-async def delete_user(user_id: int):
+@app.post("/delete_user/{user_login}")
+async def delete_user(user_login: str):
+    """ Delete user by telegram login"""
     pass
 
 
 @app.get('/get_token')
 async def get_token():
-    token = 555
-    # save token in db
+    token = generate_token()
+    await controller.add_token(token)
     return {"token": token}
 
 
 @app.post("/add_room/")
-async def add_room():
-    pass
+async def add_room(number: str,
+                   type_class: str,
+                   places: int,
+                   computer_places: int,
+                   multimedia: bool,
+                   description: str):
+    """ Function for add room
+        - type_class: "лекционная", "практическая", "переговорная"
+        - places - сидячие места (без учёта компьютерных мест)
+        - computer places - компьютерные места
+    """
+    if type_class in ["лекционная", "практическая", "переговорная"]:
+        await controller.add_room(number, type_class,
+                                  places, computer_places,
+                                  multimedia, description)
+        return "Room add"
+    else:
+        return "Bad input type_class"
+
 
 
 def bot_app():

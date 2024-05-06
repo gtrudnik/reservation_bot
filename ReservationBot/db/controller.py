@@ -5,9 +5,11 @@ from ReservationBot.db.db import get_session
 from ReservationBot.db.models.user import User
 from ReservationBot.db.models.reservation import Reservation
 from ReservationBot.db.models.room import Room
+from ReservationBot.db.models.token import Token
 
 
 class Controller():
+    """ Users """
     async def add_user(self, tg_id: str, chat_id: int):
         session: AsyncSession = await get_session()
         res = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalars().all()
@@ -51,23 +53,48 @@ class Controller():
             print("Error: change permission")
             return "Error: change permission"
 
+    """ Reservations """
     async def add_reservation(self):
         pass
 
-    async def add_room(self):
-        pass
+    """ Rooms """
+
+    async def add_room(self,
+                       number: str,
+                       type_class: str,
+                       places: int,
+                       computer_places: int,
+                       multimedia: bool,
+                       description: str):
+        session: AsyncSession = await get_session()
+        room = Room(number=number, type_class=type_class,
+                    places=places, computer_places=computer_places,
+                    multimedia=multimedia, description=description)
+        session.add(room)
+        await session.commit()
 
     async def get_free_rooms(self):
         pass
 
+    """ Tokens """
+    async def add_token(self, token):
+        session: AsyncSession = await get_session()
+        token = Token(token=token)
+        session.add(token)
+        await session.commit()
+
+    async def del_token(self, token):
+        session: AsyncSession = await get_session()
+        token = (await session.execute(select(Token).filter(Token.token == token))).scalar()
+        await session.delete(token)
+        await session.commit()
+
 
 controller = Controller()
 
-
+#
 # async def start():
-#     # x = await controller.update_user('505', 11)
-#     x = await controller.change_permission('505', "Not")
-#     print(x)
+#     await controller.del_token("lol")
 #
 #
 # asyncio.run(start())
