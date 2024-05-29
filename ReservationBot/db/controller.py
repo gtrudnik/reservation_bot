@@ -1,16 +1,19 @@
 import asyncio
-from sqlalchemy import select, update
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from ReservationBot.db.db import get_session
 from ReservationBot.db.models.user import User
 from ReservationBot.db.models.reservation import Reservation
 from ReservationBot.db.models.room import Room
 from ReservationBot.db.models.token import Token
+from ReservationBot.db.models.state import State
 
 
 class Controller():
     """ Users """
-    async def add_user(self, tg_id: str, chat_id: int):
+
+    @staticmethod
+    async def add_user(tg_id: str, chat_id: int):
         session: AsyncSession = await get_session()
         res = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalars().all()
         if len(res) == 0:
@@ -25,7 +28,8 @@ class Controller():
             await session.commit()
             return "Too many users with one tg_id"
 
-    async def update_user(self, tg_id: str, chat_id: int):
+    @staticmethod
+    async def update_user(tg_id: str, chat_id: int):
         session: AsyncSession = await get_session()
         res = (await session.execute(select(User).filter(User.chat_id == chat_id))).scalars().all()
         if len(res) == 0:
@@ -42,7 +46,8 @@ class Controller():
             await session.commit()
             return "Too many users with one chat_id"
 
-    async def change_permission(self, tg_id: str, permission: str):
+    @staticmethod
+    async def change_permission(tg_id: str, permission: str):
         try:
             session: AsyncSession = await get_session()
             user = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalar()
@@ -54,39 +59,74 @@ class Controller():
             return "Error: change permission"
 
     """ Reservations """
-    async def add_reservation(self):
+
+    @staticmethod
+    async def add_reservation():
         pass
 
     """ Rooms """
 
-    async def add_room(self,
-                       number: str,
+    @staticmethod
+    async def add_room(number: str,
                        type_class: str,
                        places: int,
                        computer_places: int,
                        multimedia: bool,
                        description: str):
         session: AsyncSession = await get_session()
+
         room = Room(number=number, type_class=type_class,
                     places=places, computer_places=computer_places,
                     multimedia=multimedia, description=description)
         session.add(room)
         await session.commit()
 
-    async def get_free_rooms(self):
+    @staticmethod
+    async def update_room(number: str,
+                          type_class: str,
+                          places: int,
+                          computer_places: int,
+                          multimedia: bool,
+                          description: str):
+        session: AsyncSession = await get_session()
+        room = (await session.execute(select(Room).filter(Room.number == number))).scalar()
+        room.type_class = type_class
+        room.places = places
+        room.computer_places = computer_places
+        room.multimedia = multimedia
+        room.description = description
+        await session.commit()
+
+    @staticmethod
+    async def delete_room(number: str):
+        session: AsyncSession = await get_session()
+        await session.execute(delete(Room).filter(Room.number == number))
+        await session.commit()
+
+    @staticmethod
+    async def get_all_rooms():
+        session: AsyncSession = await get_session()
+        rooms = (await session.execute(select(Room))).scalars()
+        await session.commit()
+        return rooms
+
+    @staticmethod
+    async def get_free_rooms():
         pass
 
     """ Tokens """
-    async def add_token(self, token):
+
+    @staticmethod
+    async def add_token(token):
         session: AsyncSession = await get_session()
         token = Token(token=token)
         session.add(token)
         await session.commit()
 
-    async def del_token(self, token):
+    @staticmethod
+    async def del_token(token):
         session: AsyncSession = await get_session()
-        token = (await session.execute(select(Token).filter(Token.token == token))).scalar()
-        await session.delete(token)
+        await session.execute(delete(Token).filter(Token.token == token))
         await session.commit()
 
 

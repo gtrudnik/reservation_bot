@@ -6,7 +6,8 @@ from ReservationBot.db.controller import controller
 from ReservationBot.config import settings
 from ReservationBot.bot import start_bot
 from ReservationBot.generate_token import generate_token
-
+from ReservationBot.schemas.room_types import RoomTypes
+from ReservationBot.schemas.RoomsResponse import RoomsResponse
 
 app = FastAPI(
     title=settings.app_name,
@@ -29,7 +30,7 @@ async def get_token():
 
 @app.post("/add_room/")
 async def add_room(number: str,
-                   type_class: str,
+                   type_class: RoomTypes,
                    places: int,
                    computer_places: int,
                    multimedia: bool,
@@ -43,10 +44,59 @@ async def add_room(number: str,
         await controller.add_room(number, type_class,
                                   places, computer_places,
                                   multimedia, description)
-        return "Room add"
+        return "Room added"
     else:
         return "Bad input type_class"
 
+
+@app.post("/update_room/")
+async def update_room(number: str,
+                      type_class: RoomTypes,
+                      places: int,
+                      computer_places: int,
+                      multimedia: bool,
+                      description: str):
+    """ Function for update room
+        - type_class: "лекционная", "практическая", "переговорная"
+        - places - сидячие места (без учёта компьютерных мест)
+        - computer places - компьютерные места
+    """
+    if type_class in ["лекционная", "практическая", "переговорная"]:
+        await controller.update_room(number, type_class,
+                                     places, computer_places,
+                                     multimedia, description)
+        return "Room updated"
+    else:
+        return "Bad input type_class"
+
+
+@app.post("/get_all_rooms/")
+async def get_all_rooms():
+    """ Function for get all rooms"""
+    try:
+        res = await controller.get_all_rooms()
+        response = []
+        for room in res:
+            print(room)
+            response.append(RoomsResponse(number=room.number,
+                                          type_class=room.type_class,
+                                          places=room.places,
+                                          computer_places=room.computer_places,
+                                          multimedia=room.multimedia,
+                                          description=room.description))
+        return response
+    except:
+        return f"error"
+
+
+@app.post("/delete_room/")
+async def delete_room(number: str):
+    """ Function for delete room """
+    try:
+        await controller.delete_room(number)
+        return "room deleted"
+    except:
+        return "error"
 
 
 def bot_app():
