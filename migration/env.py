@@ -14,6 +14,7 @@ from ReservationBot.db.models.user import User
 from ReservationBot.db.models.reservation import Reservation
 from ReservationBot.db.models.room import Room
 from ReservationBot.db.models.token import Token
+from ReservationBot.db.models.state import State
 
 
 # this is the Alembic Config object, which provides

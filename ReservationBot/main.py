@@ -14,10 +14,10 @@ app = FastAPI(
 )
 
 
-@app.post("/delete_user/{user_login}")
-async def delete_user(user_login: str):
-    """ Delete user by telegram login"""
-    pass
+@app.post("/change_permission")
+async def change_permission(user_login: str, permission: str):
+    """ Change user permission  by telegram login"""
+    await controller.change_permission(user_login, permission)
 
 
 @app.get('/get_token')
