@@ -15,11 +15,15 @@ class Controller():
     @staticmethod
     async def add_user(tg_id: str, chat_id: int):
         session: AsyncSession = await get_session()
-        res = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalars().all()
+        # TODO: when user is not exist error
+        query = select(User).filter(User.tg_id == tg_id)
+        res = (await session.execute(query)).scalars().all()
+        print("res", res)
         if len(res) == 0:
             user = User(tg_id=tg_id, chat_id=chat_id, permission="Not")
             session.add(user)
             await session.commit()
+            await Controller.update_state(chat_id=chat_id)
             return "User added"
         elif len(res) == 1:
             await session.commit()
@@ -57,6 +61,32 @@ class Controller():
         except Exception:
             print("Error: change permission")
             return "Error: change permission"
+
+    """ States """
+    @staticmethod
+    async def update_state(chat_id: int, number=1, data=None):
+        session: AsyncSession = await get_session()
+        res = (await session.execute(select(State).filter(State.user_id == chat_id))).scalars().all()
+        if len(res) == 0:
+            state = State(user_id=chat_id, number=number, data=None)
+            session.add(state)
+            await session.commit()
+            return "State for user didn't exist, state added"
+        elif len(res) == 1:
+            state = (await session.execute(select(State).filter(State.user_id == chat_id))).scalar()
+            state.user_id = chat_id
+            state.number = number
+            if data:
+                state.data = data
+            await session.commit()
+            return "State for user updated"
+        else:
+            await session.commit()
+            return "Too many states for this user"
+
+    @staticmethod
+    async def get_state(chat_id: int, data=None):
+        pass
 
     """ Reservations """
 
@@ -138,3 +168,5 @@ controller = Controller()
 #
 #
 # asyncio.run(start())
+#asyncio.run(controller.update_state(324324, 2))
+#asyncio.run(controller.add_user("dfsdfdsвпапавпавfd", 22334534524324))

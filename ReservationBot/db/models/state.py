@@ -1,5 +1,5 @@
 from ReservationBot.db.db import Base
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, JSON
+from sqlalchemy import Column, ForeignKey, BigInteger, String, Boolean, JSON, Integer
 
 
 class State(Base):
@@ -8,7 +8,7 @@ class State(Base):
     number = Column(Integer, default=0)
     data = Column(JSON, nullable=True)
     user_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey('users.chat_id'),
         nullable=False,
         unique=True,

@@ -1,11 +1,11 @@
 from ReservationBot.db.db import Base
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, BigInteger, String
 
 
 class User(Base):
     __tablename__ = 'users'
     chat_id = Column(
-        Integer,
+        BigInteger,
         nullable=False,
         unique=True,
         primary_key=True
