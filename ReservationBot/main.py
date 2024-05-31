@@ -8,6 +8,8 @@ from ReservationBot.bot import start_bot
 from ReservationBot.generate_token import generate_token
 from ReservationBot.schemas.room_types import RoomTypes
 from ReservationBot.schemas.RoomsResponse import RoomsResponse
+from ReservationBot.schemas.permission_types import PermissionsTypes
+from ReservationBot.bot import send_message
 
 app = FastAPI(
     title=settings.app_name,
@@ -16,9 +18,14 @@ app = FastAPI(
 
 
 @app.post("/change_permission")
-async def change_permission(user_login: str, permission: str):
+async def change_permission(user_login: str, permission: PermissionsTypes):
     """ Change user permission  by telegram login"""
-    await controller.change_permission(user_login, permission)
+    res = await controller.change_permission(user_login, permission)
+    if res["info"] == "Permission given":
+        if permission == "YES":
+            await send_message(chat_id=res["chat_id"], message="Администратор предоставил доступ к сервису.")
+        elif permission == "NOT":
+            await send_message(chat_id=res["chat_id"], message="Администратор отменил доступ к сервису.")
 
 
 @app.get('/get_token')

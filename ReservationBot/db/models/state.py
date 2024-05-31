@@ -3,6 +3,12 @@ from sqlalchemy import Column, ForeignKey, BigInteger, String, Boolean, JSON, In
 
 
 class State(Base):
+    """"
+    0 - auth
+    1 - main menu
+    2 - create reservation
+    3 - list reservations
+    """
     __tablename__ = 'states'
 
     number = Column(Integer, default=0)
