@@ -104,8 +104,30 @@ class Controller():
     """ Reservations """
 
     @staticmethod
-    async def add_reservation():
-        pass
+    async def add_reservation(date, time_start, time_end,
+                              description, owner, class_id):
+        session: AsyncSession = await get_session()
+        reservation = Reservation(date=date,
+                                  time_start=time_start,
+                                  time_end=time_end,
+                                  description=description,
+                                  owner=owner,
+                                  class_id=class_id)
+        session.add(reservation)
+        await session.commit()
+
+    @staticmethod
+    async def get_active_reservations(chat_id):
+        # TODO: only active reservations
+        session: AsyncSession = await get_session()
+        res = (await session.execute(select(Reservation).filter(Reservation.owner == chat_id))).scalars().all()
+        return res
+
+    @staticmethod
+    async def delete_reservation(id: int):
+        session: AsyncSession = await get_session()
+        await session.execute(delete(Reservation).filter(Reservation.id == id))
+        await session.commit()
 
     """ Rooms """
 
@@ -155,6 +177,7 @@ class Controller():
 
     @staticmethod
     async def get_free_rooms():
+        # TODO
         pass
 
     """ Tokens """

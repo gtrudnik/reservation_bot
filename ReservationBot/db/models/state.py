@@ -7,7 +7,7 @@ class State(Base):
     0 - auth
     1 - main menu
     2 - create reservation
-    3 - list reservations
+    3 - delete reservations
     """
     __tablename__ = 'states'
 

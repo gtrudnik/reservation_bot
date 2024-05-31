@@ -1,6 +1,7 @@
 from telebot.async_telebot import AsyncTeleBot
 from ReservationBot.config import settings
 from ReservationBot.db.controller import controller
+from ReservationBot.db.models.reservation import Reservation
 
 bot = AsyncTeleBot(settings.token)
 
@@ -10,7 +11,9 @@ def check_permission(func):
         if await controller.check_permission(chat_id=message.chat.id):
             return await func(message)
         else:
-            return await send_message(message.chat.id, "Вам не доступна эта функция.")
+            return await bot.send_message(message.chat.id, "Вам не доступна эта функция. "
+                                                           "Для получения доступа введите токен, "
+                                                           "или попросите администратора выдать вам доступ")
 
     return wrapper
 
@@ -44,18 +47,28 @@ async def save_message(message):
 @check_permission
 async def new_reservation(message):
     """ Function for create new reservation """
+    await controller.update_state(chat_id=message.chat.id, number=2, data={})
 
 
 @bot.message_handler(commands=['list_reservations'])
 @check_permission
 async def list_reservations(message):
     """ Function for get list reservations """
+    reservations = await controller.get_active_reservations(message.chat.id)
+    if len(reservations) == 0:
+        await bot.send_message(message.chat.id, "У вас нет активных броней аудитории.")
+    else:
+        text_message = "Список ваших активных броней:\n"
+        for reservation in reservations:
+            pass
+        await bot.send_message(message.chat.id, "good")
 
 
 @bot.message_handler(commands=['delete_reservation'])
 @check_permission
-async def new_reservation(message):
+async def delete_reservation(message):
     """ Function for delete reservation """
+    await controller.update_state(chat_id=message.chat.id, number=3, data={})
 
 
 async def start_bot():
