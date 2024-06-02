@@ -58,10 +58,17 @@ async def list_reservations(message):
     if len(reservations) == 0:
         await bot.send_message(message.chat.id, "У вас нет активных броней аудитории.")
     else:
-        text_message = "Список ваших активных броней:\n"
+        text_message = "Список ваших активных броней:\n\n"
         for reservation in reservations:
-            pass
-        await bot.send_message(message.chat.id, "good")
+            text_message += "ID: " + str(reservation.id) + "\n"
+            text_message += "Дата: " + str(reservation.date) + "\n"
+            text_message += "Время начала: " + str(reservation.time_start) + "\n"
+            text_message += "Время окончания: " + str(reservation.time_end) + "\n"
+            room = await controller.get_room(reservation.class_id)
+            text_message += "Номер аудитории: " + str(room.number) + "\n"
+            text_message += "Описание: " + str(reservation.description) + "\n\n"
+        await bot.send_message(message.chat.id, text_message)
+    return len(reservations)
 
 
 @bot.message_handler(commands=['delete_reservation'])
@@ -69,6 +76,9 @@ async def list_reservations(message):
 async def delete_reservation(message):
     """ Function for delete reservation """
     await controller.update_state(chat_id=message.chat.id, number=3, data={})
+    count = await list_reservations(message)
+    if count != 0:
+        await bot.send_message(message.chat.id, "Выберите бронь для удаления. (id - брони)")
 
 
 @bot.message_handler(content_types=['text'])
@@ -93,8 +103,20 @@ async def new_message(message):
         pass
         # adding reservations
     elif state["number"] == 3:
-        pass
         # delete reservation
+        if message.text.isdigit():
+            id = int(message.text)
+            try:
+                res = await controller.delete_reservation(id)
+                if res == "Wrong id":
+                    await bot.send_message(message.chat.id, "Неверный id")
+                else:
+                    await bot.send_message(message.chat.id, "Бронь удалена.")
+                    await controller.update_state(chat_id=message.chat.id, number=1)
+            except:
+                await bot.send_message(message.chat.id, "Такой брони нет.")
+        else:
+            await bot.send_message(message.chat.id, "id брони должно быть числом.")
 
 
 async def start_bot():

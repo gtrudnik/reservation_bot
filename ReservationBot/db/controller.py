@@ -149,6 +149,10 @@ class Controller():
     @staticmethod
     async def delete_reservation(id: int):
         session: AsyncSession = await get_session()
+        res = (await session.execute(select(Reservation).filter(Reservation.id == id))).scalar()
+        if res is None:
+            await session.commit()
+            return "Wrong id"
         await session.execute(delete(Reservation).filter(Reservation.id == id))
         await session.commit()
 
@@ -190,6 +194,13 @@ class Controller():
         session: AsyncSession = await get_session()
         await session.execute(delete(Room).filter(Room.number == number))
         await session.commit()
+
+    @staticmethod
+    async def get_room(id: int):
+        session: AsyncSession = await get_session()
+        rooms = (await session.execute(select(Room).filter(Room.id == id))).scalar()
+        await session.commit()
+        return rooms
 
     @staticmethod
     async def get_all_rooms():
