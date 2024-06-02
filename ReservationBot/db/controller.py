@@ -18,7 +18,6 @@ class Controller():
         session: AsyncSession = await get_session()
         query = select(User).filter(User.tg_id == tg_id)
         res = (await session.execute(query)).scalars().all()
-        print("res", res)
         if len(res) == 0:
             user = User(tg_id=tg_id, chat_id=chat_id, permission="Not")
             session.add(user)
@@ -51,16 +50,19 @@ class Controller():
             return "Too many users with one chat_id"
 
     @staticmethod
-    async def change_permission(tg_id: str, permission: str):
+    async def change_permission(permission: str, tg_id: str | None = None, chat_id: int | None = None):
         try:
             session: AsyncSession = await get_session()
-            user = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalar()
+            if tg_id is not None:
+                user = (await session.execute(select(User).filter(User.tg_id == tg_id))).scalar()
+            elif chat_id is not None:
+                user = (await session.execute(select(User).filter(User.chat_id == chat_id))).scalar()
             user.permission = permission
             await session.commit()
             if permission == "NOT":
                 await Controller.update_state(chat_id=user.chat_id, number=0, data={"attempts": 0})
             else:
-                await Controller.update_state(chat_id=user.chat_id, number=1, data={})
+                await Controller.update_state(chat_id=user.chat_id, number=1)
             return {"info": "Permission given", "chat_id": user.chat_id}
         except Exception:
             print("Error: change permission")
@@ -76,12 +78,13 @@ class Controller():
             pass
 
     """ States """
+
     @staticmethod
     async def update_state(chat_id: int, number=1, data=None):
         session: AsyncSession = await get_session()
         res = (await session.execute(select(State).filter(State.user_id == chat_id))).scalars().all()
         if len(res) == 0:
-            state = State(user_id=chat_id, number=number, data=None)
+            state = State(user_id=chat_id, number=number, data=data)
             session.add(state)
             await session.commit()
             return "State for user didn't exist, state added"
@@ -89,7 +92,7 @@ class Controller():
             state = (await session.execute(select(State).filter(State.user_id == chat_id))).scalar()
             state.user_id = chat_id
             state.number = number
-            if data:
+            if data or number == 1:
                 state.data = data
             await session.commit()
             return "State for user updated"
@@ -103,11 +106,12 @@ class Controller():
         res = (await session.execute(select(State).filter(State.user_id == chat_id))).scalar()
         await session.commit()
         if res is not None:
-            return (res.number, res.data)
+            return {"number": res.number, "data": res.data}
         else:
             return "User not exist"
 
     """ Reservations """
+
     @staticmethod
     async def add_reservation(date, time_start, time_end,
                               owner, class_id, description=""):
@@ -149,6 +153,7 @@ class Controller():
         await session.commit()
 
     """ Rooms """
+
     @staticmethod
     async def add_room(number: str,
                        type_class: str,
@@ -223,6 +228,7 @@ class Controller():
         return free_rooms
 
     """ Tokens """
+
     @staticmethod
     async def add_token(token):
         session: AsyncSession = await get_session()
@@ -235,6 +241,16 @@ class Controller():
         session: AsyncSession = await get_session()
         await session.execute(delete(Token).filter(Token.token == token))
         await session.commit()
+
+    @staticmethod
+    async def check_token(token, chat_id):
+        session: AsyncSession = await get_session()
+        res = (await session.execute(select(Token).filter(Token.token == token))).scalar()
+        await session.commit()
+        if res is not None:
+            await Controller.change_permission(chat_id=chat_id, permission="YES")
+            await Controller.del_token(token)
+        return res is not None
 
 
 controller = Controller()
