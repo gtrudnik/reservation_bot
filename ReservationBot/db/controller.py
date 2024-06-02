@@ -1,5 +1,6 @@
 import asyncio
-from sqlalchemy import select, update, delete
+import datetime
+from sqlalchemy import select, update, delete, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from ReservationBot.db.db import get_session
 from ReservationBot.db.models.user import User
@@ -75,7 +76,6 @@ class Controller():
             pass
 
     """ States """
-
     @staticmethod
     async def update_state(chat_id: int, number=1, data=None):
         session: AsyncSession = await get_session()
@@ -99,15 +99,28 @@ class Controller():
 
     @staticmethod
     async def get_state(chat_id: int, data=None):
-        pass
+        session: AsyncSession = await get_session()
+        res = (await session.execute(select(State).filter(State.user_id == chat_id))).scalar()
+        await session.commit()
+        if res is not None:
+            return (res.number, res.data)
+        else:
+            return "User not exist"
 
     """ Reservations """
-
     @staticmethod
     async def add_reservation(date, time_start, time_end,
-                              description, owner, class_id):
+                              owner, class_id, description=""):
+        """
+            date (str) in format year-month-day
+            time_start (str) in format hours:minutes
+            time_end (str) in format hours:minutes
+        """
         session: AsyncSession = await get_session()
-        reservation = Reservation(date=date,
+        year, month, day = map(int, date.split('-'))
+        time_start = datetime.datetime.strptime(time_start, '%H:%M').time()
+        time_end = datetime.datetime.strptime(time_end, '%H:%M').time()
+        reservation = Reservation(date=datetime.date(year=year, month=month, day=day),
                                   time_start=time_start,
                                   time_end=time_end,
                                   description=description,
@@ -118,9 +131,15 @@ class Controller():
 
     @staticmethod
     async def get_active_reservations(chat_id):
-        # TODO: only active reservations
         session: AsyncSession = await get_session()
-        res = (await session.execute(select(Reservation).filter(Reservation.owner == chat_id))).scalars().all()
+        query = select(Reservation).filter(and_(Reservation.owner == chat_id,
+                                                or_(
+                                                    and_(Reservation.date == datetime.date.today(),
+                                                         Reservation.time_end >= datetime.datetime.now().time()),
+                                                    Reservation.date > datetime.date.today()))
+                                           )
+        res = (await session.execute(query)).scalars().all()
+        await session.commit()
         return res
 
     @staticmethod
@@ -130,7 +149,6 @@ class Controller():
         await session.commit()
 
     """ Rooms """
-
     @staticmethod
     async def add_room(number: str,
                        type_class: str,
@@ -176,12 +194,35 @@ class Controller():
         return rooms
 
     @staticmethod
-    async def get_free_rooms():
-        # TODO
-        pass
+    async def get_free_rooms(date, time_start, time_end):
+        """
+            date (str) in format year-month-day
+            time_start (str) in format hours:minutes
+            time_end (str) in format hours:minutes
+        """
+        session: AsyncSession = await get_session()
+        year, month, day = map(int, date.split('-'))
+        time_start = datetime.datetime.strptime(time_start, '%H:%M').time()
+        time_end = datetime.datetime.strptime(time_end, '%H:%M').time()
+        query = select(Reservation.class_id).filter(
+            and_(
+                Reservation.date == datetime.date(year=year, month=month, day=day),
+                or_(
+                    and_(Reservation.time_start <= time_start, time_start <= Reservation.time_end),
+                    and_(Reservation.time_start <= time_end, time_start <= Reservation.time_end)
+                )
+            )
+        )
+        classes_id = (await session.execute(query)).scalars().all()
+        all_rooms = await Controller.get_all_rooms()
+        free_rooms = []
+        for room in all_rooms:
+            if room.id not in classes_id:
+                free_rooms.append(room)
+        await session.commit()
+        return free_rooms
 
     """ Tokens """
-
     @staticmethod
     async def add_token(token):
         session: AsyncSession = await get_session()
@@ -205,4 +246,13 @@ controller = Controller()
 #
 # asyncio.run(start())
 # asyncio.run(controller.update_state(324324, 2))
-# asyncio.run(controller.add_user("dfsdfdsвпапавпавfd", 22334534524324))
+# print(type(datetime.datetime.strptime('16:00', '%H:%M').time()))
+# asyncio.run(controller.add_reservation(date="2024-06-02", time_start="11:30", time_end="12:00", description="",
+#                                        owner=661467077, class_id=1))
+# print(datetime.datetime.now().time())
+# res = asyncio.run(controller.get_active_reservations(chat_id=661467077))
+# res = asyncio.run(controller.get_free_rooms(date="2024-06-02", time_start="11:30", time_end="12:00"))
+# for i in res:
+#     print(i.id)
+# res = asyncio.run(controller.get_state(661467077))
+# print(res)
