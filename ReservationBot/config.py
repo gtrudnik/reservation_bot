@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     postgres_db: str = os.getenv('POSTGRES_DB')
     tokenbot_url: str = "localhost"
     token: str = os.getenv('TOKEN')
-    start_text: str = "Добрый день!"
-    list_commands: str = "/help - список всех комнад\n/save - обновить информацию о вашем аккаунте"
+    start_text: str = ("Добрый день! Для получения доступа к сервису необходимо ввести токен "
+                       "или попросить администратора выдать вам доступ.")
+    list_commands: str = ("/help - список всех комнад\n/save - обновить информацию о вашем аккаунте"
+                          "\n/new_reservation - забронировать аудиторию"
+                          "\n/list_reservations - получить список своих активных броней"
+                          "\n/delete_reservation - удалить бронь"
+                          "\n/cancel - отменить все действия")
 
 
 settings = Settings()

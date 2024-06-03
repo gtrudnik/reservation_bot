@@ -92,8 +92,7 @@ class Controller():
             state = (await session.execute(select(State).filter(State.user_id == chat_id))).scalar()
             state.user_id = chat_id
             state.number = number
-            if data or number == 1:
-                state.data = data
+            state.data = data
             await session.commit()
             return "State for user updated"
         else:
@@ -210,7 +209,7 @@ class Controller():
         return rooms
 
     @staticmethod
-    async def get_free_rooms(date, time_start, time_end):
+    async def get_free_rooms(date, time_start, time_end, type_room):
         """
             date (str) in format year-month-day
             time_start (str) in format hours:minutes
@@ -230,7 +229,7 @@ class Controller():
             )
         )
         classes_id = (await session.execute(query)).scalars().all()
-        all_rooms = await Controller.get_all_rooms()
+        all_rooms = (await session.execute(select(Room).filter(Room.type_class == type_room))).scalars()
         free_rooms = []
         for room in all_rooms:
             if room.id not in classes_id:
@@ -274,7 +273,7 @@ controller = Controller()
 # asyncio.run(start())
 # asyncio.run(controller.update_state(324324, 2))
 # print(type(datetime.datetime.strptime('16:00', '%H:%M').time()))
-# asyncio.run(controller.add_reservation(date="2024-06-02", time_start="11:30", time_end="12:00", description="",
+# asyncio.run(controller.add_reservation(date="2024-06-12", time_start="11:30", time_end="12:00", description="",
 #                                        owner=661467077, class_id=1))
 # print(datetime.datetime.now().time())
 # res = asyncio.run(controller.get_active_reservations(chat_id=661467077))

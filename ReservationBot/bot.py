@@ -1,7 +1,10 @@
+import datetime
+
 from telebot.async_telebot import AsyncTeleBot
 from ReservationBot.config import settings
 from ReservationBot.db.controller import controller
 from ReservationBot.db.models.reservation import Reservation
+from ReservationBot.schemas.room_types import RoomTypes
 
 bot = AsyncTeleBot(settings.token)
 
@@ -48,6 +51,7 @@ async def save_message(message):
 async def new_reservation(message):
     """ Function for create new reservation """
     await controller.update_state(chat_id=message.chat.id, number=2, data={})
+    await bot.send_message(message.chat.id, "Напишите описание вашей встречи. /cancel - для остановки действий")
 
 
 @bot.message_handler(commands=['list_reservations'])
@@ -75,10 +79,18 @@ async def list_reservations(message):
 @check_permission
 async def delete_reservation(message):
     """ Function for delete reservation """
-    await controller.update_state(chat_id=message.chat.id, number=3, data={})
+    await controller.update_state(chat_id=message.chat.id, number=3)
     count = await list_reservations(message)
     if count != 0:
-        await bot.send_message(message.chat.id, "Выберите бронь для удаления. (id - брони)")
+        await bot.send_message(message.chat.id,
+                               "Выберите бронь для удаления. (id - брони)  /cancel - для остановки действий")
+
+
+@bot.message_handler(commands=['cancel'])
+@check_permission
+async def cancel(message):
+    await controller.update_state(chat_id=message.chat.id, number=1)
+    await bot.send_message(message.chat.id, "Все действия отменены.")
 
 
 @bot.message_handler(content_types=['text'])
@@ -100,8 +112,98 @@ async def new_message(message):
             await bot.send_message(message.chat.id, "Такого токена нет!")
         await bot.delete_message(message.chat.id, message.id)
     elif state["number"] == 2:
-        pass
         # adding reservations
+        k = len(state["data"])
+        if k == 0:
+            # description
+            state["data"]["description"] = message.text
+            await bot.send_message(message.chat.id, "Введите тип комнаты (лекционная, практическая, переговорная):")
+        elif k == 1:
+            # type room
+            if message.text.lower() in RoomTypes:
+                state["data"]["type_room"] = message.text.lower()
+                await bot.send_message(message.chat.id, "Введите дату в формате 18.05")
+            else:
+                await bot.send_message(message.chat.id, "Тип комнаты введен неверно, попробуйте ещё раз")
+
+        elif k == 2:
+            # date
+            try:
+                text = message.text
+                day, month = map(int, text.split('.'))
+                if 1 <= month <= 12 and 1 <= day <= 31:
+                    year = str(datetime.date.today().year)
+                    date = year + "-" + str(month) + "-" + str(day)
+                    state["data"]["date"] = date
+                    await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
+                else:
+                    await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
+            except:
+                await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
+        elif k == 3:
+            # time_start
+            try:
+                text = message.text
+                hour, minute = map(int, text.split(':'))
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    state["data"]["time_start"] = message.text
+                    await bot.send_message(message.chat.id, "Введите время окончания в формате: 8:30")
+                else:
+                    await bot.send_message(message.chat.id, "Время начала введено неверно, попробуйте ещё раз")
+            except:
+                await bot.send_message(message.chat.id, "Время начала введено неверно, попробуйте ещё раз")
+        elif k == 4:
+            # time_end
+            try:
+                text = message.text
+                hour, minute = map(int, text.split(':'))
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    state["data"]["time_end"] = message.text
+                    free_rooms = await controller.get_free_rooms(date=state["data"]["date"],
+                                                                 time_start=state["data"]["time_start"],
+                                                                 time_end=state["data"]["time_end"],
+                                                                 type_room=state["data"]["type_room"])
+                    if len(free_rooms) == 0:
+                        await bot.send_message(message.chat.id, "Свободных аудиторий нет, "
+                                                                "попробуйте выбрать другое время.")
+                        await controller.update_state(chat_id=message.chat.id, number=1)
+                        return
+                    rooms_id = []
+                    text = "Свободные аудтории на это время:\n\n"
+                    for room in free_rooms:
+                        rooms_id.append(room.id)
+                        text += "id: " + str(room.id) + "\n"
+                        text += "номер: " + room.number + "\n"
+                        text += "тип аудитории: " + room.type_class + "\n"
+                        text += "посадочные места: " + str(room.places) + "\n"
+                        text += "компьютерные места: " + str(room.computer_places) + "\n"
+                        text += "мультимедиа: " + str(room.multimedia) + "\n"
+                        text += "описание: " + room.description + "\n\n"
+                    state["data"]["rooms_id"] = rooms_id
+                    await bot.send_message(message.chat.id, text)
+                    await bot.send_message(message.chat.id, "Выберите аудиторию и напишите ее id")
+                else:
+                    await bot.send_message(message.chat.id, "Время окончания введено неверно, попробуйте ещё раз")
+            except:
+                await bot.send_message(message.chat.id, "Время окончания введено неверно, попробуйте ещё раз")
+
+        elif k > 4:
+            # id room
+            if message.text.isdigit():
+                id = int(message.text)
+                if id in state["data"]["rooms_id"]:
+                    await controller.add_reservation(date=state["data"]["date"],
+                                                     time_start=state["data"]["time_start"],
+                                                     time_end=state["data"]["time_end"],
+                                                     description=state["data"]["description"],
+                                                     owner=message.chat.id,
+                                                     class_id=id)
+                    await bot.send_message(message.chat.id, "Ваша бронь успешно зарегистрирована.")
+                else:
+                    await bot.send_message(message.chat.id, "Такого id нет.")
+            else:
+                await bot.send_message(message.chat.id, "id должен быть числом.")
+        await controller.update_state(chat_id=message.chat.id, number=2, data=state["data"])
     elif state["number"] == 3:
         # delete reservation
         if message.text.isdigit():
