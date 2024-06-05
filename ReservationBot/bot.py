@@ -159,10 +159,14 @@ async def new_message(message):
                 text = message.text
                 day, month = map(int, text.split('.'))
                 if 1 <= month <= 12 and 1 <= day <= 31:
-                    year = str(datetime.date.today().year)
-                    date = year + "-" + str(month) + "-" + str(day)
-                    state["data"]["date"] = date
-                    await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
+                    year = datetime.date.today().year
+                    if datetime.date.today() <= datetime.date(year=year, month=month, day=day):
+                        date = str(year) + "-" + str(month) + "-" + str(day)
+                        state["data"]["date"] = date
+                        await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
+                    else:
+                        await bot.send_message(message.chat.id, "Дата введена неверно, "
+                                                                "так как этот день уже прошёл, попробуйте ещё раз")
                 else:
                     await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
             except:
@@ -172,7 +176,14 @@ async def new_message(message):
             try:
                 text = message.text
                 hour, minute = map(int, text.split(':'))
+                time_now = datetime.datetime.now()
                 if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    year, month, day = map(int, state["data"]["date"].split('-'))
+                    if (datetime.date.today() == datetime.date(year=year, month=month, day=day)
+                            and datetime.time(hour=time_now.hour, minute=time_now.minute) >=
+                            datetime.time(hour=hour, minute=minute)):
+                        await bot.send_message(message.chat.id, "Это время сегодня уже прошло, попробуйте ещё раз")
+                        return
                     state["data"]["time_start"] = message.text
                     await bot.send_message(message.chat.id, "Введите время окончания в формате: 8:30")
                 else:
@@ -185,6 +196,12 @@ async def new_message(message):
                 text = message.text
                 hour, minute = map(int, text.split(':'))
                 if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    hour_start, minute_start = map(int, state["data"]["time_start"].split(':'))
+                    if datetime.time(hour=hour, minute=minute) <= datetime.time(hour=hour_start, minute=minute_start):
+                        await bot.send_message(message.chat.id,
+                                               f"Время окончания должно быть позже чем время начала: "
+                                               f"{state["data"]["time_start"]}.")
+                        return
                     state["data"]["time_end"] = message.text
                     free_rooms = await controller.get_free_rooms(date=state["data"]["date"],
                                                                  time_start=state["data"]["time_start"],
