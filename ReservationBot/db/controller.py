@@ -146,9 +146,9 @@ class Controller():
         return res
 
     @staticmethod
-    async def delete_reservation(id: int):
+    async def delete_reservation(id: int, chat_id: int):
         session: AsyncSession = await get_session()
-        res = (await session.execute(select(Reservation).filter(Reservation.id == id))).scalar()
+        res = (await session.execute(select(Reservation).filter(and_(Reservation.id == id, Reservation.owner == chat_id)))).scalar()
         if res is None:
             await session.commit()
             return "Wrong id"

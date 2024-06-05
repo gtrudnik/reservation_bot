@@ -112,13 +112,6 @@ async def cancel(message):
 
 @bot.message_handler(content_types=['text'])
 async def new_message(message):
-    if message.text == menu_text[0]:
-        await new_reservation(message)
-    elif message.text == menu_text[1]:
-        await list_reservations(message)
-    elif message.text == menu_text[2]:
-        await delete_reservation(message)
-
     state = await controller.get_state(message.chat.id)
     if state == "User not exist":
         res = await controller.add_user(message.chat.username, message.chat.id)
@@ -126,6 +119,13 @@ async def new_message(message):
             await controller.update_state(chat_id=message.chat.id, number=0, data={"attempts": 0})
         await bot.send_message(message.chat.id, "Для получения доступа введите токен, "
                                                 "или попросите администратора выдать вам доступ")
+    elif state["number"] == 1:
+        if message.text == menu_text[0]:
+            await new_reservation(message)
+        elif message.text == menu_text[1]:
+            await list_reservations(message)
+        elif message.text == menu_text[2]:
+            await delete_reservation(message)
     elif state["number"] == 0:
         # check token
         if await controller.check_token(chat_id=message.chat.id, token=message.text):
@@ -259,7 +259,7 @@ async def new_message(message):
         if message.text.isdigit():
             id = int(message.text)
             try:
-                res = await controller.delete_reservation(id)
+                res = await controller.delete_reservation(id, message.chat.id)
                 if res == "Wrong id":
                     await bot.send_message(message.chat.id, "Неверный id")
                 else:
