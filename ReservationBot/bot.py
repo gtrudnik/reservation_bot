@@ -29,7 +29,8 @@ def add_buttons(text_buttons: list[str]):
     return keyboard
 
 
-menu_buttons = add_buttons(["Забронировать аудиторию", "Список броней", "Удалить бронь"])
+menu_text = ["Забронировать аудиторию", "Список броней", "Удалить бронь"]
+menu_buttons = add_buttons(menu_text)
 
 
 async def send_message(chat_id: int, message: str):
@@ -47,7 +48,7 @@ async def start_message(message):
 @bot.message_handler(commands=['help'])
 async def info_message(message):
     """ Function senf info message with list of commands """
-    await bot.send_message(message.chat.id, settings.list_commands)
+    await bot.send_message(message.chat.id, settings.list_commands, reply_markup=menu_buttons)
 
 
 @bot.message_handler(commands=['save'])
@@ -106,11 +107,18 @@ async def delete_reservation(message):
 @check_permission
 async def cancel(message):
     await controller.update_state(chat_id=message.chat.id, number=1)
-    await bot.send_message(message.chat.id, "Все действия отменены.")
+    await bot.send_message(message.chat.id, "Все действия отменены.", reply_markup=menu_buttons)
 
 
 @bot.message_handler(content_types=['text'])
 async def new_message(message):
+    if message.text == menu_text[0]:
+        await new_reservation(message)
+    elif message.text == menu_text[1]:
+        await list_reservations(message)
+    elif message.text == menu_text[2]:
+        await delete_reservation(message)
+
     state = await controller.get_state(message.chat.id)
     if state == "User not exist":
         res = await controller.add_user(message.chat.username, message.chat.id)
@@ -186,6 +194,7 @@ async def new_message(message):
                         await bot.send_message(message.chat.id, "Свободных аудиторий нет, "
                                                                 "попробуйте выбрать другое время.")
                         await controller.update_state(chat_id=message.chat.id, number=1)
+                        await info_message(message)
                         return
                     rooms_id = []
                     text = "Свободные аудтории на это время:\n\n"
@@ -239,6 +248,7 @@ async def new_message(message):
                 else:
                     await bot.send_message(message.chat.id, "Бронь удалена.")
                     await controller.update_state(chat_id=message.chat.id, number=1)
+                    await info_message(message)
             except:
                 await bot.send_message(message.chat.id, "Такой брони нет.")
         else:
