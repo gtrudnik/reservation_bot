@@ -31,6 +31,8 @@ def add_buttons(text_buttons: list[str]):
 
 menu_text = ["Забронировать аудиторию", "Список броней", "Удалить бронь"]
 menu_buttons = add_buttons(menu_text)
+date_buttons_text = ["сегодня", "завтра"]
+date_buttons = add_buttons(date_buttons_text)
 
 
 async def send_message(chat_id: int, message: str):
@@ -78,10 +80,11 @@ async def list_reservations(message):
         text_message = "Список ваших активных броней:\n\n"
         for reservation in reservations:
             reserv_id.append(str(reservation.id))
+            date = ".".join(str(reservation.date).split("-")[::-1])
             text_message += "ID: " + str(reservation.id) + "\n"
-            text_message += "Дата: " + str(reservation.date) + "\n"
-            text_message += "Время начала: " + str(reservation.time_start) + "\n"
-            text_message += "Время окончания: " + str(reservation.time_end) + "\n"
+            text_message += "Дата: " + date + "\n"
+            text_message += "Время начала: " + str(reservation.time_start)[:-3] + "\n"
+            text_message += "Время окончания: " + str(reservation.time_end)[:-3] + "\n"
             room = await controller.get_room(reservation.class_id)
             text_message += "Номер аудитории: " + str(room.number) + "\n"
             text_message += "Описание: " + str(reservation.description) + "\n\n"
@@ -93,10 +96,9 @@ async def list_reservations(message):
 @check_permission
 async def delete_reservation(message):
     """ Function for delete reservation """
-    await controller.update_state(chat_id=message.chat.id, number=3)
     reserv_id = await list_reservations(message)
     if len(reserv_id) != 0:
-        print(reserv_id)
+        await controller.update_state(chat_id=message.chat.id, number=3)
         buttons = add_buttons(reserv_id)
         await bot.send_message(message.chat.id,
                                "Выберите бронь для удаления. (id - брони)  /cancel - для остановки действий",
@@ -149,7 +151,7 @@ async def new_message(message):
             # type room
             if message.text.lower() in RoomTypes:
                 state["data"]["type_room"] = message.text.lower()
-                await bot.send_message(message.chat.id, "Введите дату в формате 18.05")
+                await bot.send_message(message.chat.id, "Введите дату в формате 18.05", reply_markup=date_buttons)
             else:
                 await bot.send_message(message.chat.id, "Тип комнаты введен неверно, попробуйте ещё раз")
 
@@ -157,18 +159,25 @@ async def new_message(message):
             # date
             try:
                 text = message.text
-                day, month = map(int, text.split('.'))
-                if 1 <= month <= 12 and 1 <= day <= 31:
-                    year = datetime.date.today().year
-                    if datetime.date.today() <= datetime.date(year=year, month=month, day=day):
-                        date = str(year) + "-" + str(month) + "-" + str(day)
-                        state["data"]["date"] = date
-                        await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
-                    else:
-                        await bot.send_message(message.chat.id, "Дата введена неверно, "
-                                                                "так как этот день уже прошёл, попробуйте ещё раз")
+                if text in date_buttons_text:
+                    delta_time = date_buttons_text.index(text)
+                    date = datetime.date.today() + datetime.timedelta(days=delta_time)
+                    date = str(date.year) + "-" + str(date.month) + "-" + str(date.day)
+                    state["data"]["date"] = date
+                    await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
                 else:
-                    await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
+                    day, month = map(int, text.split('.'))
+                    if 1 <= month <= 12 and 1 <= day <= 31:
+                        year = datetime.date.today().year
+                        if datetime.date.today() <= datetime.date(year=year, month=month, day=day):
+                            date = str(year) + "-" + str(month) + "-" + str(day)
+                            state["data"]["date"] = date
+                            await bot.send_message(message.chat.id, "Введите время начала в формате: 8:30")
+                        else:
+                            await bot.send_message(message.chat.id, "Дата введена неверно, "
+                                                                    "так как этот день уже прошёл, попробуйте ещё раз")
+                    else:
+                        await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
             except:
                 await bot.send_message(message.chat.id, "Дата введена неверно, попробуйте ещё раз")
         elif k == 3:
@@ -222,7 +231,7 @@ async def new_message(message):
                         text += "тип аудитории: " + room.type_class + "\n"
                         text += "посадочные места: " + str(room.places) + "\n"
                         text += "компьютерные места: " + str(room.computer_places) + "\n"
-                        text += "мультимедиа: " + str(room.multimedia) + "\n"
+                        text += "мультимедиа: " + ("есть" if room.multimedia else "нет") + "\n"
                         text += "описание: " + room.description + "\n\n"
                     state["data"]["rooms_id"] = rooms_id
                     await bot.send_message(message.chat.id, text)
