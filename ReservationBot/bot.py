@@ -207,9 +207,9 @@ async def new_message(message):
                 if 0 <= hour <= 23 and 0 <= minute <= 59:
                     hour_start, minute_start = map(int, state["data"]["time_start"].split(':'))
                     if datetime.time(hour=hour, minute=minute) <= datetime.time(hour=hour_start, minute=minute_start):
+                        time_start = state["data"]["time_start"]
                         await bot.send_message(message.chat.id,
-                                               f"Время окончания должно быть позже чем время начала: "
-                                               f"{state["data"]["time_start"]}.")
+                                               f"Время окончания должно быть позже чем время начала: {time_start}.")
                         return
                     state["data"]["time_end"] = message.text
                     free_rooms = await controller.get_free_rooms(date=state["data"]["date"],
