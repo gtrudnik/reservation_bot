@@ -10,3 +10,4 @@ class Token(Base):
         primary_key=True,
         unique=True,
     )
+    tg_login = Column(String, nullable=False)

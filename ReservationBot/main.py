@@ -20,18 +20,21 @@ app = FastAPI(
 @app.post("/change_permission")
 async def change_permission(user_login: str, permission: PermissionsTypes):
     """ Change user permission  by telegram login"""
-    res = await controller.change_permission(user_login, permission)
-    if res["info"] == "Permission given":
+    res = await controller.change_permission(tg_id=user_login, permission=permission)
+    if res.get("info") == "Permission given":
         if permission == "YES":
             await send_message(chat_id=res["chat_id"], message="Администратор предоставил доступ к сервису.")
         elif permission == "NOT":
             await send_message(chat_id=res["chat_id"], message="Администратор отменил доступ к сервису.")
+    else:
+        return "error"
 
 
 @app.get('/get_token')
-async def get_token():
+async def get_token(user_login: str):
+    """ Get personal token by user login in telegram """
     token = generate_token()
-    await controller.add_token(token)
+    await controller.add_token(token, user_login)
     return {"token": token}
 
 
@@ -84,7 +87,6 @@ async def get_all_rooms():
         res = await controller.get_all_rooms()
         response = []
         for room in res:
-            print(room)
             response.append(RoomsResponse(number=room.number,
                                           type_class=room.type_class,
                                           places=room.places,

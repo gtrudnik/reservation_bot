@@ -65,8 +65,7 @@ class Controller():
                 await Controller.update_state(chat_id=user.chat_id, number=1)
             return {"info": "Permission given", "chat_id": user.chat_id}
         except Exception:
-            print("Error: change permission")
-            return "Error: change permission"
+            return {"Error": "change permission"}
 
     @staticmethod
     async def check_permission(chat_id: int):
@@ -240,9 +239,9 @@ class Controller():
     """ Tokens """
 
     @staticmethod
-    async def add_token(token):
+    async def add_token(token, tg_login):
         session: AsyncSession = await get_session()
-        token = Token(token=token)
+        token = Token(token=token, tg_login=tg_login)
         session.add(token)
         await session.commit()
 
@@ -253,9 +252,10 @@ class Controller():
         await session.commit()
 
     @staticmethod
-    async def check_token(token, chat_id):
+    async def check_token(token, chat_id, tg_login):
         session: AsyncSession = await get_session()
-        res = (await session.execute(select(Token).filter(Token.token == token))).scalar()
+        res = (await session.execute(select(Token).filter(and_(Token.token == token,
+                                                               Token.tg_login == tg_login)))).scalar()
         await session.commit()
         if res is not None:
             await Controller.change_permission(chat_id=chat_id, permission="YES")

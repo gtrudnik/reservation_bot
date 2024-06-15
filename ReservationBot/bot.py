@@ -9,7 +9,6 @@ from ReservationBot.schemas.room_types import RoomTypes
 
 bot = AsyncTeleBot(settings.token)
 
-
 def check_permission(func):
     async def wrapper(message):
         if await controller.check_permission(chat_id=message.chat.id):
@@ -37,7 +36,7 @@ date_buttons = add_buttons(date_buttons_text)
 
 async def send_message(chat_id: int, message: str):
     """ Function for send message """
-    await bot.send_message(chat_id, message)
+    await bot.send_message(chat_id, message, timeout=5)
 
 
 @bot.message_handler(commands=['start'])
@@ -130,12 +129,16 @@ async def new_message(message):
             await delete_reservation(message)
     elif state["number"] == 0:
         # check token
-        if await controller.check_token(chat_id=message.chat.id, token=message.text):
+        if state["data"]["attempts"] >= 5:
+            await bot.send_message(message.chat.id, "Чтоб получить доступ к сервису обратитесь "
+                                                    "к администратору, возможности получить доступ через токен у вас больше нет.")
+        elif await controller.check_token(chat_id=message.chat.id, token=message.text, tg_login=message.chat.username):
             await bot.send_message(message.chat.id, "Вы получили доступ к сервису!")
         else:
             state["data"]["attempts"] += 1
             await controller.update_state(chat_id=message.chat.id, number=0, data=state["data"])
-            await bot.send_message(message.chat.id, "Такого токена нет!")
+            await bot.send_message(message.chat.id, f"Токен недействителен.\n"
+                                                    f"Попыток осталось: {5-state["data"]["attempts"]}")
         await bot.delete_message(message.chat.id, message.id)
     elif state["number"] == 2:
         # adding reservations
